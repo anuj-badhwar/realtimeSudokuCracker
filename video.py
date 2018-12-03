@@ -46,7 +46,7 @@ def video_test():
                         if show_solution:
                             mapped = write_solution(mapped, merged_digits_flag, cache_solution)
 
-                        frame = reflect_to_orig(frame, rotational_matrix, mapped)
+                        frame = reflect_to_original(frame, rotational_matrix, mapped)
 
                         cv2.imshow('frame',frame)
                     elif not reset:
@@ -89,7 +89,7 @@ def video_test():
                         mapped = write_solution(mapped, merged_digits_flag, answer)
                         cv2.imshow("Write",mapped)
 
-                    frame = reflect_to_orig(frame, rotational_matrix, mapped)
+                    frame = reflect_to_original(frame, rotational_matrix, mapped)
                 cv2.imshow('frame', frame)
         else:
             invalid_count += 1

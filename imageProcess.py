@@ -9,36 +9,34 @@ def get_size(img):
 
 def get_rectangles(ori_img):
     """
-
     :param ori_img: the input image
     :return: return a list of rectangulars based on the areas in descending order
     """
     w,h = get_size(ori_img)
     img_area = w*h
     thres = img_area/8.0
-    bi_img = cv2.cvtColor(ori_img, cv2.COLOR_BGR2GRAY) #Convert RGB colored image to Grayscale
-    th2 = cv2.GaussianBlur(bi_img, (3, 3), 0, 0) #Blur Image => Reduces Noise
+    bi_img = cv2.cvtColor(ori_img, cv2.COLOR_BGR2GRAY)
+    th2 = cv2.GaussianBlur(bi_img, (3, 3), 0, 0)
     kernel = np.ones((2, 2), np.uint8)
-    th2 = cv2.morphologyEx(th2, cv2.MORPH_OPEN, kernel) #Erosion followed by Dilation
+    th2 = cv2.morphologyEx(th2, cv2.MORPH_OPEN, kernel)
     th2 = cv2.adaptiveThreshold(th2, 255, cv2.ADAPTIVE_THRESH_MEAN_C, \
-                                cv2.THRESH_BINARY_INV, 11, 0) #Every local 11x11 region ==> its own
-                                                                #threshold value ==> Mean of neighbourhood(11x11)
+                                cv2.THRESH_BINARY_INV, 11, 0)
+
     th2 = cv2.morphologyEx(th2, cv2.MORPH_OPEN, kernel)
     _, contours0, hierarchy = cv2.findContours(th2, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-    approximations = [cv2.approxPolyDP(ctr,15,True) for ctr in contours0] #Approximate the polygon shape
-    approximations_filter = [app for app in approximations if len(app)==4 and cv2.isContourConvex(app)] #Filter polygons with 4 sides
-    rectangles_area = [cv2.contourArea(app) for app in approximations_filter ] #Find area of each filtered
-    pair = zip(approximations_filter,rectangles_area) #Har polygon ko uske area ke sath pair up
-    pair = [p for p in pair if p[1]>thres] #threshold se kam area discard krdo
-    pair.sort(key=lambda x:x[1],reverse=True) #Decreasing order mei sort krdo
+    approximations = [cv2.approxPolyDP(ctr,15,True) for ctr in contours0]
+    approximations_filter = [app for app in approximations if len(app)==4 and cv2.isContourConvex(app)]
+    rectangles_area = [cv2.contourArea(app) for app in approximations_filter ]
+    pair = zip(approximations_filter,rectangles_area)
+    pair = [p for p in pair if p[1]>thres]
+    pair.sort(key=lambda x:x[1],reverse=True) 
     return pair
 
 
 
 def get_rotational_matrix(approximation, mapped_size, reverse = False):
     """
-
-    :param approximation: the approxiamte rectangular
+    :param approximation: approximate rectangular
     :param mapped_size: mapped size (width, height)
     :return: return a rotation matrix
     """
@@ -46,10 +44,10 @@ def get_rotational_matrix(approximation, mapped_size, reverse = False):
     w, h = mapped_size
     map_points = np.array([ [0, 0],[w - 1, 0], [0, h - 1], [w - 1, h - 1]], dtype=np.float32)
     if reverse:
-        rot_matrix = cv2.getPerspectiveTransform(map_points, ori_points )
+        rotational_matrix = cv2.getPerspectiveTransform(map_points, ori_points )
     else:
-        rot_matrix = cv2.getPerspectiveTransform(ori_points, map_points)
-    return rot_matrix
+        rotational_matrix = cv2.getPerspectiveTransform(ori_points, map_points)
+    return rotational_matrix
 
 
 def sort_apporximation(approximation):
@@ -72,7 +70,7 @@ def sort_apporximation(approximation):
 
 def get_valid_rectangulars(bin_img_block):
     """
-    Assume the block is 28*28, specially for this task
+    Block: 28*28
     :param bin_img_block:
     :return:
     """
@@ -88,7 +86,6 @@ def get_valid_rectangulars(bin_img_block):
 
 def catch_digit_center(bin_img_block, digit_bound_size):
     """
-
     :param bin_img_block: the 28*28 binary image
     :param digit_bound_size: the size of the digit bound in the new picture
     :return: a 28*28 block with a digit in the center(if there is one)
@@ -108,14 +105,12 @@ def catch_digit_center(bin_img_block, digit_bound_size):
         left_top_y = int(np.round((28 - digit_bound_size[1])/2.0))
         digit_center = np.zeros((28,28))
         digit_center[left_top_y:left_top_y+digit_bound_size[1], left_top_x:left_top_x+digit_bound_size[0]] = digit
-        # cv2.imshow("digit",digit_center)
-        # cv2.waitKey(0)
+
         return True, digit_center
 
 
 def preprocess_sudoku_grid(mapped_pic):
     """
-
     :param mapped_pic: the  picture after doing warpPerspective for detecting digits
     :return: a binary picture
     """
@@ -141,8 +136,7 @@ def write_solution(mapped,digit_flag, answer):
 
 def split_To_Blocks(orig, width_split, height_split):
     """
-
-    :param orig: picture
+    :param orig: frame
     :param width_split: the number of horizontal split
     :param height_split: the number of vertical split
     :return:
@@ -155,16 +149,15 @@ def split_To_Blocks(orig, width_split, height_split):
     return np.array(points)
 
 
-def reflect_to_orig(orig, rot_matrix, mapped):
+def reflect_to_original(orig, rotational_matrix, mapped):
     """
-    when we set the drawed pixel without zero RGB, then there is no problem.
     :param orig:
-    :param rot_matrix:
+    :param rotational_matrix:
     :param mapped:
     :return:
     """
     tmpori = orig.copy()
-    tmpori = cv2.warpPerspective(mapped, rot_matrix, get_size(orig), tmpori, cv2.WARP_INVERSE_MAP)
+    tmpori = cv2.warpPerspective(mapped, rotational_matrix, get_size(orig), tmpori, cv2.WARP_INVERSE_MAP)
     orig = orig*(tmpori == 0)
 
     return orig + tmpori
