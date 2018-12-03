@@ -4,26 +4,7 @@ import numpy as np
 
 
 def get_size(img):
-    """
-
-    :param img:
-    :return: return image size (width,height)
-    """
     return img.shape[:2][::-1]
-
-
-def add_rectangular(img, approx):
-    """
-    :param img:
-    :param approx:
-    :return:
-    """
-    for i in xrange(len(approx)):
-        cv2.line(img,
-                (approx[(i % 4)][0][0], approx[(i % 4)][0][1]),
-                (approx[((i + 1) % 4)][0][0], approx[((i + 1) % 4)][0][1]),
-                (255, 0, 0), 2)
-    return img
 
 
 def get_rectangles(ori_img):
@@ -87,25 +68,6 @@ def sort_apporximation(approximation):
             return 2
     points.sort(key=locate)
     return np.array(points,dtype=np.float32)
-
-
-def add_v_h_grids(orig, width_split, height_split):
-    """
-    :param orig: the passed original picture
-    :param height_split: the number of vertical split
-    :param width_split: the number of horizontal split
-    :return:
-    """
-    #print orig
-
-    w, h = get_size(orig)
-    hps = np.round(np.linspace(0,h-1,height_split+1)).astype(int)
-    wps = np.round(np.linspace(0,w-1,width_split+1)).astype(int)
-    for h_point in np.nditer(hps[1:-1]):
-        cv2.line(orig,(0, h_point),(w-1, h_point),(255, 102, 255), 2)
-    for w_point in np.nditer(wps[1:-1]):
-        cv2.line(orig,(w_point,0),(w_point,h-1),(255,102,255),2)
-    return orig
 
 
 def get_valid_rectangulars(bin_img_block):
@@ -177,7 +139,7 @@ def write_solution(mapped,digit_flag, answer):
             cv2.putText(mapped, answer[i], (orig_point[0]+6, orig_point[1]+20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 1, 1), 2)
     return mapped
 
-def split_2_blocks(orig, width_split, height_split):
+def split_To_Blocks(orig, width_split, height_split):
     """
 
     :param orig: picture
@@ -204,8 +166,5 @@ def reflect_to_orig(orig, rot_matrix, mapped):
     tmpori = orig.copy()
     tmpori = cv2.warpPerspective(mapped, rot_matrix, get_size(orig), tmpori, cv2.WARP_INVERSE_MAP)
     orig = orig*(tmpori == 0)
-    # merge = tmpori*(tmpori!=0)
-    # cv2.imshow("orig",orig)
-    # cv2.imshow("tempori",tmpori)
-    # cv2.imshow("merge",merge)
+
     return orig + tmpori

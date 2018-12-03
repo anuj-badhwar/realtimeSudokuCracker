@@ -29,7 +29,7 @@ def video_test():
                 rotational_matrix = get_rotational_matrix(rec[0], mapped_size, reverse=False)
                 mapped = cv2.warpPerspective(frame, rotational_matrix, mapped_size)
                 binary_mapped = preprocess_sudoku_grid(mapped)
-                binary_blocks = split_2_blocks(binary_mapped,9,9)
+                binary_blocks = split_To_Blocks(binary_mapped,9,9)
                 for i, b in enumerate(binary_blocks):
                     cur_block = b.reshape(28,28)
                     flag,centre = catch_digit_center(cur_block,(16,20))
