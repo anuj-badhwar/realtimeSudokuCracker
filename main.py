@@ -66,6 +66,8 @@ def run():
                     block_center.clear()
                     cache_solution = None
                     cache_digits_flag = None
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                cv2.putText(frame,'No Valid Sudoku Found',(20,400), font, 1,(0,255,0),2,cv2.LINE_AA)
                 cv2.imshow('frame', frame)
             elif reset:
                 valid_count+=1
@@ -84,10 +86,14 @@ def run():
                     sudoku[merged_digits_flag] = pred_labels
                     sudoku = sudoku.astype(np.int)
                     answer = solve(''.join(map(str,sudoku)))
+
                     if answer is not False and show_solution:
                         cache_solution = answer
                         mapped = write_solution(mapped, merged_digits_flag, answer)
                         cv2.imshow("Write",mapped)
+                    else:
+                        font = cv2.FONT_HERSHEY_SIMPLEX
+                        cv2.putText(frame,'Can not solve',(20,400), font, 1,(0,255,0),2,cv2.LINE_AA)
 
                     frame = reflect_to_original(frame, rotational_matrix, mapped)
                 cv2.imshow('frame', frame)
@@ -102,6 +108,8 @@ def run():
                 block_center.clear()
                 cache_solution = None
                 cache_digits_flag = None
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            cv2.putText(frame,'No Valid Sudoku Found',(20,400), font, 1,(0,255,0),2,cv2.LINE_AA)
             cv2.imshow('frame', frame)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
