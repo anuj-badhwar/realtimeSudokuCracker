@@ -1,106 +1,125 @@
-# -*- coding: utf-8 -*-
-import numpy as np
-def cross(A, B):
-    "Cross product of elements in A and elements in B."
-    return [a + b for a in A for b in B]
+def generateReferences():
+
+	def cross(vector_a, vector_b):
+		return [a + b for a in vector_a for b in vector_b]
+
+	all_rows = 'ABCDEFGHI'
+	all_columns = '123456789'
+
+	coordinates = cross(all_rows, all_columns)
+
+	row_units = [cross(row, all_columns) for row in all_rows]
+
+	col_units = [cross(all_rows, col) for col in all_columns]
+
+	box_units = [cross(row_square, col_square) for row_square in ['ABC', 'DEF', 'GHI'] for col_square in ['123', '456', '789']]
+
+	allUnits = row_units + col_units + box_units  # Add units together
+	groups = {}
+
+	groups['units'] = {pos: [unit for unit in allUnits if pos in unit] for pos in coordinates}
+	groups['peers'] = {pos: set(sum(groups['units'][pos], [])) - {pos} for pos in coordinates}
+
+	return coordinates, groups, allUnits
 
 
-digits = '123456789'
-rows = 'ABCDEFGHI'
-cols = digits
-squares = cross(rows, cols)
-unitlist = ([cross(rows, c) for c in cols] +
-            [cross(r, cols) for r in rows] +
-            [cross(rs, cs) for rs in ('ABC', 'DEF', 'GHI') for cs in ('123', '456', '789')])
-units = dict((s, [u for u in unitlist if s in u])
-             for s in squares)
-peers = dict((s, set(sum(units[s], [])) - set([s]))
-             for s in squares)
+def parseSudoku(puzzle, digits='123456789', nulls='0.'):
+	"""
+	Parses a string describing a Sudoku puzzle board into a dictionary with each cell mapped to its relevant
+	coordinate, i.e. A1, A2, A3...
+	"""
 
-def parse_grid(grid):
-    """Convert grid to a dict of possible values, {square: digits}, or
-    return False if a contradiction is detected."""
-    ## To start, every square can be any digit; then assign values from the grid.
-    values = dict((s, digits) for s in squares)
-    for s, d in grid_values(grid).items():
-        if d in digits and not assign(values, s, d):
-            return False  ## (Fail if we can't assign d to square s.)
-    return values
+	flat_puzzle = ['.' if char in nulls else char for char in puzzle if char in digits + nulls]
+
+	if len(flat_puzzle) != 81:
+		raise ValueError('Invalid sudoku length %s' % len(flat_puzzle))
+
+	coordinates, groups, allUnits = generateReferences()
+
+	return dict(zip(coordinates, flat_puzzle))
 
 
-def grid_values(grid):
-    "Convert grid into a dict of {square: char} with '0' or '.' for empties."
-    chars = [c for c in grid if c in digits or c in '0.']
-    assert len(chars) == 81
-    return dict(zip(squares, chars))
+def validate(puzzle):
+	"""Checks if a completed Sudoku puzzle has a valid sol."""
+	if puzzle is None:
+		return False
+
+	coordinates, groups, allUnits = generateReferences()
+	fullSet = [str(x) for x in range(1, 10)]
+
+	return all([sorted([puzzle[cell] for cell in unit]) == fullSet for unit in allUnits])
 
 
-def assign(values, s, d):
-    """Eliminate all the other values (except d) from values[s] and propagate.
-    Return values, except return False if a contradiction is detected."""
-    other_values = values[s].replace(d, '')
-    if all(eliminate(values, s, d2) for d2 in other_values):
-        return values
-    else:
-        return False
+def solve(puzzle):
+	digits = '123456789'
+
+	coordinates, groups, allUnits = generateReferences()
+	in_grid = parseSudoku(puzzle)
+	in_grid = {k: v for k, v in in_grid.items() if v != '.'}
+	out_grid = {cell: digits for cell in coordinates}
+	def confirmValue(grid, pos, val):
+                if grid is None:
+                        return grid
+		remaining_values = grid[pos].replace(val, '')
+		for val in remaining_values:
+			grid = eliminate(grid, pos, val)
+		return grid
+
+	def eliminate(grid, pos, val):
+		"""Eliminates `val` as a possibility from all peers of `pos`."""
+
+		if grid is None:
+			return None
+
+		if val not in grid[pos]:
+			return grid
+
+		grid[pos] = grid[pos].replace(val, '')
+
+		if len(grid[pos]) == 0:
+			return None
+		elif len(grid[pos]) == 1:
+			for peer in groups['peers'][pos]:
+				grid = eliminate(grid, peer, grid[pos])
+				if grid is None:
+					return None
 
 
-def eliminate(values, s, d):
-    """Eliminate d from values[s]; propagate when values or places <= 2.
-    Return values, except return False if a contradiction is detected."""
-    if d not in values[s]:
-        return values  ## Already eliminated
-    values[s] = values[s].replace(d, '')
-    ## (1) If a square s is reduced to one value d2, then eliminate d2 from the peers.
-    if len(values[s]) == 0:
-        return False  ## Contradiction: removed last value
-    elif len(values[s]) == 1:
-        d2 = values[s]
-        if not all(eliminate(values, s2, d2) for s2 in peers[s]):
+		for unit in groups['units'][pos]:
+			possibilities = [p for p in unit if val in grid[p]]
+
+			if len(possibilities) == 0:
+				return None
+			elif len(possibilities) == 1 and len(grid[possibilities[0]]) > 1:
+				if confirmValue(grid, possibilities[0], val) is None:
+					return None
+
+		return grid
+
+	for position, value in in_grid.items():
+		out_grid = confirmValue(out_grid, position, value)
+
+	if validate(out_grid):
+		return out_grid
+
+	def guessDigit(grid):
+		"""Guesses a digit from the cell with the fewest unconfirmed possibilities and propagates the constraints."""
+
+		if grid is None:
+			return None
+
+		if all([len(possibilities) == 1 for cell, possibilities in grid.items()]):
+			return grid
+
+		n, pos = min([(len(possibilities), cell) for cell, possibilities in grid.items() if len(possibilities) > 1])
+
+		for val in grid[pos]:
+			sol = guessDigit(confirmValue(grid.copy(), pos, val))
+			if sol is not None:
+				return sol
+
+	out_grid = guessDigit(out_grid)
+        if out_grid is not None:
+	        return [out_grid[s] for s in coordinates]
+        else:
             return False
-    ## (2) If a unit u is reduced to only one place for a value d, then put it there.
-    for u in units[s]:
-        dplaces = [s for s in u if d in values[s]]
-        if len(dplaces) == 0:
-            return False  ## Contradiction: no place for this value
-        elif len(dplaces) == 1:
-            # d can only be in one place in unit; assign it there
-            if not assign(values, dplaces[0], d):
-                return False
-    return values
-
-
-def display(values):
-    "Display these values as a 2-D grid."
-    width = 1 + max(len(values[s]) for s in squares)
-    line = '+'.join(['-' * (width * 3)] * 3)
-    for r in rows:
-        print ''.join(values[r + c].center(width) + ('|' if c in '36' else '')
-                      for c in cols)
-        if r in 'CF': print line
-    print
-
-
-def solve(grid):
-    tmp = search(parse_grid(grid))
-    if tmp!=False:
-        return np.array([tmp[s] for s in squares])
-    else:
-        return False
-
-def search(values):
-    "Using depth-first search and propagation, try all possible values."
-    if values is False:
-        return False  ## Failed earlier
-    if all(len(values[s]) == 1 for s in squares):
-        return values  ## Solved!
-    ## Chose the unfilled square s with the fewest possibilities
-    n, s = min((len(values[s]), s) for s in squares if len(values[s]) > 1)
-    return some(search(assign(values.copy(), s, d)) for d in values[s])
-
-
-def some(seq):
-    "Return some element of seq that is true."
-    for e in seq:
-        if e: return e
-    return False

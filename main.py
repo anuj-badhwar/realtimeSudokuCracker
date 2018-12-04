@@ -4,7 +4,7 @@ from Classfier import *
 from Sudoku import solve
 show_solution = True
 
-def video_test():
+def run():
     mapped_size = (252, 252)
     global_step = 20000
     predictor = get_trained_model()
@@ -111,4 +111,4 @@ def video_test():
     cv2.destroyAllWindows()
 
 if __name__ == "__main__":
-    video_test()
+    run()
